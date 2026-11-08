@@ -114,7 +114,13 @@ drop policy if exists "see own admin row" on public.admin_users;
 create policy "see own admin row" on public.admin_users for select to authenticated
   using (user_id = auth.uid() or public.is_owner());
 
-grant usage on schema public to anon, authenticated;
+grant usage on schema public to anon, authenticated, service_role;
+-- Supabase's own server account (used by the email and staff-login functions) needs full access.
+-- Without this, projects created with "Automatically expose new tables" off can't send emails.
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+grant execute on all functions in schema public to service_role;
+alter default privileges in schema public grant all on tables to service_role;
 grant select on public.shop_settings, public.services, public.barbers, public.photos to anon, authenticated;
 grant insert, update, delete on public.shop_settings, public.services, public.barbers, public.photos to authenticated;
 grant insert on public.bookings to anon, authenticated;
