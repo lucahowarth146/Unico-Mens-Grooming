@@ -1,7 +1,6 @@
 # Unico Men's Grooming website
 
-A static website (no build step) that uses your existing Supabase project
-(`voaiwpfwmfuqrblmbfbp`) for bookings, logins, services, photos and shop details.
+A static website (no build step) that uses Supabase for bookings, logins, services, photos and shop details.
 
 | Page | Who it's for |
 |---|---|
@@ -11,53 +10,39 @@ A static website (no build step) that uses your existing Supabase project
 
 Every date and time is UK time (Europe/London), whatever time zone the visitor's phone or laptop is set to.
 
-## Setup: 3 steps
+## Setup (your own Supabase project)
 
-### 1. Update the database (about 2 minutes)
-Supabase Dashboard → **SQL Editor** → New query → paste all of
-`supabase/migrations/20261107_booking_upgrade.sql` → **Run**.
+### 1. Create the database
+1. Sign up at https://supabase.com and create a project (region: West EU (London)).
+2. **SQL Editor → New query**, paste all of `supabase/setup.sql` and click **Run**.
+   This creates every table, the access rules, double-booking protection, photo uploads,
+   and fills in the current services, barbers, photos and shop details.
+3. **Project Settings → API Keys**: copy the **Project URL** and the **anon public** key
+   (under "Legacy API keys") into `js/config.js`.
 
-This adds:
-- the live "which times are taken" check, so customers only see free times;
-- a guard so the same barber can never be double-booked;
-- a `site-images` storage area for uploading photos from the admin area (only the owner can upload).
+### 2. Deploy the two functions
+**Edge Functions → Deploy a new function → Via Editor** (turn **off** "Verify JWT" for both:
+they check who's calling themselves):
+- `notify-booking`: paste `supabase/functions/notify-booking/index.ts`
+- `create-staff`: paste `supabase/functions/create-staff/index.ts`
 
-Until you run it the site still works, but every time shows as free and photo uploads won't work (pasting an image link still does).
-
-### 2. Turn on emails to the customer and the barber (about 10 minutes)
-Emails are sent through [Resend](https://resend.com), which is free for up to 3,000 emails a month.
-
-1. Create a Resend account, add and verify your domain (e.g. `unicomensgrooming.co.uk`), and create an API key.
-2. In Supabase: **Edge Functions → Secrets**, add:
-   - `RESEND_API_KEY`: your Resend key
-   - `EMAIL_FROM`: e.g. `Unico Men's Grooming <bookings@unicomensgrooming.co.uk>`
-3. Deploy the function, either with the Supabase CLI from this folder:
-
-   ```bash
-   npx supabase functions deploy notify-booking --project-ref voaiwpfwmfuqrblmbfbp
-   ```
-
-   or in the dashboard: **Edge Functions → Deploy a new function → Via Editor**, name it `notify-booking` and paste in `supabase/functions/notify-booking/index.ts`.
+### 3. Turn on emails
+**Edge Functions → Secrets**, either:
+- **Gmail** (easiest): `GMAIL_USER` = a Gmail address, `GMAIL_APP_PASSWORD` = an app password
+  from https://myaccount.google.com/apppasswords (needs 2-step verification on that Google account), or
+- **Resend** (needs your own domain): `RESEND_API_KEY` and `EMAIL_FROM`.
 
 What gets sent:
-- **New booking:** the customer gets "request received". The barber (the email on their staff login) and the shop email get the booking details.
-- **Accepted:** the customer gets "you're booked in", and the barber gets a copy.
-- **Declined:** the customer gets "sorry, we can't make this one", and the barber gets a copy.
+- **New booking:** the customer gets "request received"; the barber (their staff login email) and the shop email get the details.
+- **Accepted / declined:** the customer is told, and the barber gets a copy.
 
-Until it's deployed, new bookings fall back to your existing `send-booking-email` function, which emails the customer and the shop but not the barber.
+### 4. Sign in
+**Authentication → Sign In / Providers → Email**: turn off **Confirm email** (or confirm from your inbox when asked).
+Then go to `/admin.html` → "First time? Set up the owner account". The first account becomes the owner.
+Add barbers in **Passwords & staff**; they sign in at `/staff.html`.
 
-A barber only gets emails once they have a staff login linked to them (admin → Passwords & staff).
-
-### 3. Put the site online
-Upload the whole folder (everything except `supabase/` and this README) to any static host:
-- **Netlify:** drag the folder onto https://app.netlify.com/drop
-- **Vercel**, **Cloudflare Pages** or **GitHub Pages** work too. There's no build command, and the output folder is the root.
-
-Then, in Supabase → **Authentication → URL Configuration**, set the Site URL to your new address.
-
-## First login
-- **Owner:** go to `/admin.html` and sign in with your existing owner email and password. If no owner account exists yet, use "First time? Set up the owner account".
-- **Staff:** the owner creates each barber's login in **Passwords & staff**. Barbers sign in at `/staff.html`.
+### Hosting
+The site is static. It's deployed on Netlify from this GitHub repository: every push to `main` goes live.
 
 ## Booking statuses
 `pending` (Awaiting reply) → `confirmed` (Accepted) → `completed` (Done). `cancelled` (Declined) frees the time slot.

@@ -18,8 +18,10 @@ function loginScreen(mode = "signin", msg = "") {
     if (!f.email.includes("@") || f.pw.length < 8) { err.textContent = "Enter your email and a password of at least 8 characters."; return; }
     if (mode === "setup" && f.pw !== f.pw2) { err.textContent = "The two passwords don't match."; return; }
     btn.disabled = true; btn.textContent = "Signing in…";
-    const r = mode === "setup" ? await sb.auth.signUp({ email: f.email.trim(), password: f.pw }) : await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.pw });
-    if (r.error || !r.data.user) { btn.disabled = false; btn.textContent = "Sign in"; err.textContent = mode === "setup" ? "The owner account couldn't be created. " + (r.error?.message || "") : "That email and password weren't recognised."; return; }
+    let r = await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.pw });
+    if (mode === "setup" && r.error) r = await sb.auth.signUp({ email: f.email.trim(), password: f.pw });
+    if (mode === "setup" && !r.error && r.data.user && !r.data.session) { btn.disabled = false; btn.textContent = "Create account"; err.textContent = "Check your inbox and click the confirmation link Supabase sent, then come back and press Create account again."; return; }
+    if (r.error || !r.data.user) { btn.disabled = false; btn.textContent = mode === "setup" ? "Create account" : "Sign in"; err.textContent = mode === "setup" ? "The owner account couldn't be created. " + (r.error?.message || "") : "That email and password weren't recognised."; return; }
     if (mode === "setup") {
       const { error } = await sb.rpc("claim_owner_account");
       if (error) { await sb.auth.signOut(); btn.disabled = false; btn.textContent = "Create account"; err.textContent = "The shop already has an owner account. Sign in instead."; return; }

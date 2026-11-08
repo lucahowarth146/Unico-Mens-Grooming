@@ -114,8 +114,7 @@ export async function loadPublic() {
 
 /* ---------- Email notifications ----------
    notify-booking (in supabase/functions) emails the customer, the barber and the shop.
-   If it has not been deployed yet, new bookings fall back to the original
-   send-booking-email function so the shop still hears about them. */
+   Returns false if it isn't deployed or the email service isn't set up. */
 export async function notify(bookingId, event) {
   try {
     const { data: { session } } = await sb.auth.getSession();
@@ -126,14 +125,6 @@ export async function notify(bookingId, event) {
       body: JSON.stringify({ booking_id: bookingId, event }),
     });
     if (r.ok) return true;
-    if (event === "created" && (r.status === 404 || r.status >= 500)) {
-      const f = await fetch(`${SUPABASE_URL}/functions/v1/send-booking-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + SUPABASE_ANON_KEY },
-        body: JSON.stringify({ booking_id: bookingId }),
-      });
-      return f.ok;
-    }
     return false;
   } catch { return false; }
 }

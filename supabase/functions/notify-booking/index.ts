@@ -5,12 +5,17 @@
 //   event "confirmed" → customer: booking accepted; barber: copy
 //   event "cancelled" → customer: booking declined; barber: copy
 //
-// Secrets to set (Supabase Dashboard → Edge Functions → Secrets, or the CLI):
-//   RESEND_API_KEY   your key from resend.com
-//   EMAIL_FROM       e.g.  Unico Men's Grooming <bookings@your-domain.co.uk>
+// Choose ONE way to send, by adding secrets in Supabase (Edge Functions → Secrets):
+//   Gmail (easiest, no website domain needed):
+//     GMAIL_USER          your Gmail address, e.g. unicobookings@gmail.com
+//     GMAIL_APP_PASSWORD  a 16-letter app password from myaccount.google.com/apppasswords
+//   or Resend (needs your own domain):
+//     RESEND_API_KEY      your key from resend.com
+//     EMAIL_FROM          e.g.  Unico Men's Grooming <bookings@your-domain.co.uk>
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import nodemailer from "npm:nodemailer@6.9.14";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +27,12 @@ const json = (body: unknown, status = 200) =>
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const RESEND = Deno.env.get("RESEND_API_KEY");
-const FROM = Deno.env.get("EMAIL_FROM") ?? "Unico Men's Grooming <onboarding@resend.dev>";
+const GMAIL_USER = Deno.env.get("GMAIL_USER");
+const GMAIL_PASS = (Deno.env.get("GMAIL_APP_PASSWORD") ?? "").replace(/\s/g, "");
+const SHOP_NAME_FALLBACK = "Unico Men's Grooming";
+const gmail = GMAIL_USER && GMAIL_PASS
+  ? nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: GMAIL_USER, pass: GMAIL_PASS } })
+  : null;
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -32,13 +42,17 @@ function prettyDate(d: string) {
   return `${DAYS[new Date(Date.UTC(y, m - 1, day)).getUTCDay()]} ${day} ${MONTHS[m - 1]} ${y}`;
 }
 
-async function send(to: string | string[], subject: string, html: string, replyTo?: string) {
-  const list = (Array.isArray(to) ? to : [to]).filter(Boolean);
+async function send(to: string | string[], subject: string, html: string, replyTo?: string, shopName = SHOP_NAME_FALLBACK) {
+  const list = [...new Set((Array.isArray(to) ? to : [to]).filter(Boolean))];
   if (!list.length) return;
+  if (gmail) {
+    await gmail.sendMail({ from: `"${shopName.replace(/"/g, "")}" <${GMAIL_USER}>`, to: list.join(", "), subject, html, replyTo: replyTo || undefined });
+    return;
+  }
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: list, subject, html, reply_to: replyTo || undefined }),
+    body: JSON.stringify({ from: Deno.env.get("EMAIL_FROM") ?? `${shopName} <onboarding@resend.dev>`, to: list, subject, html, reply_to: replyTo || undefined }),
   });
   if (!r.ok) throw new Error(`Email to ${list.join(", ")} failed: ${r.status} ${await r.text()}`);
 }
@@ -59,7 +73,7 @@ function layout(shop: Record<string, any>, heading: string, intro: string, rows:
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Use POST" }, 405);
-  if (!RESEND) return json({ error: "RESEND_API_KEY is not set" }, 500);
+  if (!gmail && !RESEND) return json({ error: "No email service set up. Add GMAIL_USER and GMAIL_APP_PASSWORD (or RESEND_API_KEY) in Edge Function secrets." }, 500);
 
   let body: { booking_id?: string; event?: string };
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
