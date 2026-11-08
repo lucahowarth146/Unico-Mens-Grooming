@@ -1,0 +1,74 @@
+/* ============================================================
+   Animations for the public website only (index.html).
+   Visual only: nothing here changes booking, admin or data.
+   Everyone who asks their device for reduced motion gets none of it.
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+
+  /* ---------- 1. Opening sequence in the hero ---------- */
+  @keyframes rise   { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes logoIn { from { opacity: 0; transform: scale(.86) rotate(-14deg); } to { opacity: 1; transform: none; } }
+  @keyframes heroZoom { from { transform: scale(1.08); } to { transform: scale(1); } }
+  @keyframes underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  .hero img.bg { animation: heroZoom 2.4s cubic-bezier(.2,.7,.2,1) both; }
+  .hero-logo   { animation: logoIn 1.1s cubic-bezier(.2,.8,.2,1) .15s both; }
+  .hero-text > * { animation: rise .8s cubic-bezier(.2,.8,.2,1) both; }
+  .hero-text > :nth-child(1) { animation-delay: .35s; }
+  .hero-text > :nth-child(2) { animation-delay: .48s; }
+  .hero-text > :nth-child(3) { animation-delay: .62s; }
+  .hero-text > :nth-child(4) { animation-delay: .76s; }
+  .hero-text > :nth-child(5) { animation-delay: .9s; }
+  header.top { animation: fadeIn .8s ease .1s both; }
+
+  /* ---------- 2. Sections fade up as they scroll into view ----------
+     js/animate.js adds .rv (hidden) and then .in (shown) — only if the
+     browser supports it, so content is never left hidden. */
+  .rv { opacity: 0; transform: translateY(28px); transition: opacity .9s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1); }
+  .rv.in { opacity: 1; transform: none; }
+
+  /* items inside a revealed block arrive one after another (--i is set by animate.js) */
+  .rv.in .cat, .rv.in .barber, .rv.in figure, .rv.in .rev {
+    animation: rise .75s cubic-bezier(.2,.8,.2,1) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+  .rv.in .row { animation: rise .6s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 35ms + 120ms); }
+
+  /* gold line drawn under each section title */
+  .rv .h2, .h2.rv { position: relative; }
+  .rv .h2::after, .h2.rv::after { content: ""; position: absolute; left: 0; bottom: -10px; width: 56px; height: 2px; background: var(--brass); transform-origin: left; transform: scaleX(0); }
+  .rv.in .h2::after, .h2.rv.in::after { animation: underline .9s cubic-bezier(.2,.8,.2,1) .35s both; }
+
+  /* ---------- 3. Hover touches ---------- */
+  .btn { transition: background .2s, color .2s, border-color .2s, transform .2s, box-shadow .2s; }
+  .btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--brass) 70%, transparent); }
+  .btn:not(:disabled):active { transform: translateY(0); }
+  .row { transition: background .25s, padding .25s; border-radius: 4px; }
+  .row:hover { background: color-mix(in srgb, var(--brass) 6%, transparent); padding-left: 8px; padding-right: 8px; }
+  .barber img { transition: transform .8s cubic-bezier(.2,.8,.2,1), filter .6s; }
+  .barber:hover img { transform: scale(1.05); filter: grayscale(0); }
+  .barber { transition: border-color .3s, transform .3s; }
+  .barber:hover { border-color: color-mix(in srgb, var(--brass) 55%, var(--line)); transform: translateY(-3px); }
+  .rev { transition: transform .3s; }
+  .rev:hover { transform: translateY(-3px); }
+  .lock { transition: color .2s, border-color .2s, transform .3s; }
+  .lock:hover { transform: rotate(-8deg); }
+  nav.links a { position: relative; transition: color .2s; }
+  nav.links a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 1px; background: var(--brass); transform: scaleX(0); transition: transform .3s; }
+  nav.links a:hover::after { transform: scaleX(1); }
+
+  /* ---------- 4. Booking panel ---------- */
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes pop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+  .sheet:not([hidden]) { animation: fadeIn .25s ease both; }
+  .sheet:not([hidden]) .panel { animation: slideIn .4s cubic-bezier(.2,.8,.2,1) both; }
+  .time, .day, .opt { transition: border-color .2s, background .2s, transform .15s; }
+  .time:hover, .day:not(:disabled):hover { transform: translateY(-2px); }
+  @keyframes sealIn { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: none; opacity: 1; } }
+  .done .seal { animation: sealIn .6s cubic-bezier(.2,.8,.2,1) both; }
+
+  /* gallery lightbox */
+  .lightbox:not([hidden]) { animation: fadeIn .25s ease both; }
+  .lightbox:not([hidden]) img { animation: pop .35s cubic-bezier(.2,.8,.2,1) both; }
+}
