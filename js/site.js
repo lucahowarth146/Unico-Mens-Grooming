@@ -80,9 +80,9 @@ const svc = () => D.services.find(x => x.id === st.service);
 
 function openBooking({ service, barber }) {
   Object.assign(st, { step: service ? "barber" : "service", service: service || null, barber: barber || "any", date: null, time: null, error: "", saving: false, done: null });
-  $("#sheet").hidden = false; document.body.style.overflow = "hidden"; render(); $("#closeSheet").focus();
+  $("#sheet").hidden = false; document.body.style.overflow = "hidden"; document.body.classList.add("modal-open"); render(); $("#closeSheet").focus();
 }
-function closeBooking() { $("#sheet").hidden = true; document.body.style.overflow = ""; }
+function closeBooking() { $("#sheet").hidden = true; document.body.style.overflow = ""; document.body.classList.remove("modal-open"); }
 $("#closeSheet").onclick = closeBooking;
 $("#sheet").addEventListener("click", e => { if (e.target.id === "sheet") closeBooking(); });
 const go = s => { st.step = s; st.error = ""; render(); $("#sbody").scrollTop = 0; };

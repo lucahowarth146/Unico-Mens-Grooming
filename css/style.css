@@ -310,3 +310,7 @@ table.bk tr.daterow td{background:var(--ink-3);font-family:var(--f-display);lett
 .head-actions{display:flex;align-items:center;gap:10px}
 .lock{display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--line);border-radius:50%;color:var(--muted);text-decoration:none;transition:color .2s,border-color .2s}
 .lock:hover{color:var(--brass);border-color:var(--brass)}
+
+/* Netlify's "Powered by Netlify" badge sits in the bottom-right corner and covers
+   the booking panel's buttons, so hide it while booking and on the admin pages. */
+body.modal-open #nl-badge-frame, body[data-mode] #nl-badge-frame { display: none !important; }
