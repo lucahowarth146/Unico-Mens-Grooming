@@ -120,6 +120,8 @@ grant insert, update, delete on public.shop_settings, public.services, public.ba
 grant insert on public.bookings to anon, authenticated;
 grant select, update, delete on public.bookings to authenticated;
 grant select on public.admin_users to authenticated;
+revoke all on function public.is_owner(), public.my_barber(), public.claim_owner_account() from public;
+grant execute on function public.is_owner(), public.my_barber() to anon, authenticated;
 grant execute on function public.claim_owner_account() to authenticated;
 
 -- ---------- Taken times (no customer details) --------------------------------
