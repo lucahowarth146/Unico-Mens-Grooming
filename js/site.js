@@ -1,4 +1,4 @@
-import { sb, $, el, toast, gbp, shopNow, addDays, dayOfWeek, hoursFor, prettyDate, fmtTime, hhmm, DAY_NAMES, MONTHS,
+import { sb, $, el, toast, gbp, sharp, sharpAttrs, shopNow, addDays, dayOfWeek, hoursFor, prettyDate, fmtTime, hhmm, DAY_NAMES, MONTHS,
   fetchBusy, freeBarbers, availableTimes, loadPublic, notify, uuid } from "./lib.js";
 import { BOOKING_DAYS_AHEAD } from "./config.js";
 
@@ -17,7 +17,10 @@ $("#yr").textContent = new Date().getFullYear();
 /* ---------- render the public page ---------- */
 function renderPage() {
   const s = D.settings;
-  if (s.hero_image) $("#heroImg").src = s.hero_image;
+  const hero = $("#heroImg");
+  hero.onerror = () => { hero.onerror = null; hero.removeAttribute("srcset"); hero.src = "img/hero.jpg"; };
+  if (s.hero_image) { const a = sharpAttrs(s.hero_image, 1600); hero.sizes = "100vw"; if (a.srcset) hero.srcset = a.srcset; hero.src = a.src; }
+  else hero.src = "img/hero.jpg";
   if (s.tagline) $("#tagline").textContent = s.tagline;
   if (s.about) $("#about").textContent = s.about;
   if (s.name) { document.title = s.name + " | Barbershop in Sale"; $("#footName").textContent = s.name; }
@@ -32,13 +35,13 @@ function renderPage() {
   if (!D.services.length) $("#board").replaceChildren(el("p", { class: "loading-veil" }, "Services will appear here soon."));
 
   $("#teamGrid").replaceChildren(...D.barbers.map(b => el("article", { class: "barber" },
-    b.photo ? el("img", { src: b.photo, alt: "Barber " + b.name, loading: "lazy" }) : null,
+    b.photo ? el("img", { ...sharpAttrs(b.photo, 600), sizes: "(max-width: 720px) 100vw, 560px", alt: "Barber " + b.name, loading: "lazy", onerror: e => e.target.remove() }) : null,
     el("div", { class: "in" }, el("span", { class: "role" }, b.title || "Barber"), el("h3", {}, b.name), el("p", {}, b.bio || ""),
       el("button", { class: "btn ghost", onclick: () => openBooking({ barber: b.id }) }, "Book with " + b.name)))));
 
   $("#gal").replaceChildren(...D.photos.map(p => el("figure", { tabindex: "0", role: "button", "aria-label": "View photo: " + (p.caption || "photo"),
     onclick: () => openLb(p.url, p.caption), onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openLb(p.url, p.caption); } } },
-    el("img", { src: p.url, alt: p.caption || "Photo from the shop", loading: "lazy" }), p.caption ? el("figcaption", {}, p.caption) : null)));
+    el("img", { ...sharpAttrs(p.url, 600), sizes: "(max-width: 640px) 100vw, 560px", alt: p.caption || "Photo from the shop", loading: "lazy", onerror: e => e.target.closest("figure")?.remove() }), p.caption ? el("figcaption", {}, p.caption) : null)));
 
   $("#revs").replaceChildren(...REVIEWS.map(([n, t]) => el("figure", { class: "rev", style: "margin:0" },
     el("span", { class: "stars", "aria-label": "5 out of 5" }, "★★★★★"), el("q", {}, t), el("figcaption", { class: "who" }, n))));
@@ -67,7 +70,7 @@ function renderPage() {
   $("#openNow").replaceChildren(el("b", {}, open ? "Open now" : "Closed now"), s.opening_hours ? " · " + s.opening_hours : "");
 }
 
-function openLb(src, cap) { $("#lbImg").src = src; $("#lbImg").alt = cap || ""; $("#lbCap").textContent = cap || ""; $("#lb").hidden = false; $("#lbClose").focus(); }
+function openLb(src, cap) { $("#lbImg").src = sharp(src, 2000); $("#lbImg").alt = cap || ""; $("#lbCap").textContent = cap || ""; $("#lb").hidden = false; $("#lbClose").focus(); }
 $("#lbClose").onclick = () => ($("#lb").hidden = true);
 $("#lb").onclick = e => { if (e.target.id === "lb") $("#lb").hidden = true; };
 document.addEventListener("click", e => { if (e.target.closest("[data-book]")) openBooking({}); });
@@ -125,7 +128,7 @@ function render() {
     b.append(el("p", { class: "q" }, "Who would you like to see?"));
     const opts = [{ id: "any", name: "Any barber", title: "First available appointment" }, ...D.barbers];
     b.append(el("div", { class: "choice" }, ...opts.map(o => el("button", { class: "opt bopt", "aria-pressed": String(st.barber === o.id), onclick: () => { st.barber = o.id; st.time = null; render(); } },
-      o.photo ? el("img", { src: o.photo, alt: "" }) : el("span", { class: "av" }, "★"), el("span", {}, el("div", { class: "t" }, o.name), el("div", { class: "s" }, o.title || "")), el("span", { class: "ck" }, st.barber === o.id ? "✓" : "")))));
+      o.photo ? el("img", { src: sharp(o.photo, 160), alt: "" }) : el("span", { class: "av" }, "★"), el("span", {}, el("div", { class: "t" }, o.name), el("div", { class: "s" }, o.title || "")), el("span", { class: "ck" }, st.barber === o.id ? "✓" : "")))));
     f.append(sum, el("div", { class: "btns" }, back("service"), next("Next", true, () => go("time"))));
   }
 

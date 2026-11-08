@@ -1,4 +1,4 @@
-import { sb, $, el, toast, gbp, shopNow, addDays, dayOfWeek, prettyDate, hhmm, toMin, DAY_KEYS, DAY_NAMES, MONTHS,
+import { sb, $, el, toast, gbp, sharp, shopNow, addDays, dayOfWeek, prettyDate, hhmm, toMin, DAY_KEYS, DAY_NAMES, MONTHS,
   notify, uploadImage, STATUS_LABEL } from "./lib.js";
 
 const MODE = document.body.dataset.mode; // "owner" or "staff"
@@ -255,7 +255,7 @@ function viewServices() {
 
 /* ======================= image picker ======================= */
 function imagePicker(label, url, folder, onChange) {
-  const img = el("img", { src: url || "", alt: "" });
+  const img = el("img", { src: sharp(url, 300) || "", alt: "" });
   const urlIn = el("input", { id: nid(), type: "url", value: url || "", placeholder: "https://…", oninput: e => { img.src = e.target.value; onChange(e.target.value); } });
   const status = el("span", { class: "muted", style: "font-size:13px" });
   const file = el("input", { type: "file", accept: "image/*", onchange: async e => {
@@ -324,7 +324,7 @@ function viewPhotos() {
       el("button", { class: "btn sm danger", onclick: () => acts.replaceChildren(el("span", { class: "inline-confirm" }, "Delete?",
         el("button", { class: "btn sm danger", onclick: async () => { const { error } = await sb.from("photos").delete().eq("id", p.id); if (error) return toast("Couldn't delete: " + error.message, "err"); S.photos = S.photos.filter(x => x.id !== p.id); toast("Photo deleted"); viewPhotos(); } }, "Delete"),
         el("button", { class: "btn sm ghost", onclick: viewPhotos }, "Keep"))) }, "Delete"));
-    grid.append(el("div", { class: "thumb" }, el("img", { src: p.url, alt: p.caption || "" }), el("div", { class: "in" }, cap,
+    grid.append(el("div", { class: "thumb" }, el("img", { src: sharp(p.url, 500), alt: p.caption || "", onerror: e => { e.target.alt = "This photo no longer loads. Replace or delete it."; } }), el("div", { class: "in" }, cap,
       el("select", { "aria-label": "Category", onchange: e => save(p, { category: e.target.value }) }, ...["Our Work", "Interior"].map(c => el("option", { selected: p.category === c }, c))), acts)));
   });
   const add = el("input", { type: "file", accept: "image/*", multiple: true, onchange: async e => {

@@ -163,3 +163,25 @@ async function shrink(file, max, q) {
 
 export const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)));
 export const STATUS_LABEL = { pending: "Awaiting reply", confirmed: "Accepted", completed: "Done", cancelled: "Declined" };
+
+/* ---------- Sharp images ----------
+   Google and Pexels photo links carry a size in the address. Ask for the size
+   the page actually needs (2x for sharp phone and Retina screens). */
+export function sharp(url, width) {
+  if (!url) return url;
+  const w = Math.round(width);
+  if (/googleusercontent\.com/.test(url)) return url.replace(/=[^=\/]*$/, "") + "=w" + w;
+  if (/images\.pexels\.com/.test(url)) {
+    const u = new URL(url);
+    u.searchParams.set("auto", "compress"); u.searchParams.set("cs", "tinysrgb"); u.searchParams.set("w", String(w));
+    u.searchParams.delete("h"); u.searchParams.delete("dpr");
+    return u.toString();
+  }
+  return url;
+}
+// <img> attributes for a sharp photo: a sized src plus a srcset so phones download less.
+export function sharpAttrs(url, cssWidth) {
+  if (!/googleusercontent\.com|images\.pexels\.com/.test(url || "")) return { src: url };
+  const sizes = [cssWidth, cssWidth * 2, cssWidth * 3].map(Math.round);
+  return { src: sharp(url, cssWidth * 2), srcset: sizes.map(s => `${sharp(url, s)} ${s}w`).join(", ") };
+}
