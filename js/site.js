@@ -216,6 +216,9 @@ async function confirm() {
   if (error) {
     st.saving = false;
     if (/slot_taken/i.test(error.message)) { st.busy[st.date] = null; st.time = null; go("time"); toast("Sorry, that time was just taken. Please pick another."); return; }
+    if (/too_many_bookings: this/i.test(error.message)) { st.error = `You already have 3 upcoming bookings with us. Please call ${D.settings.phone || "the shop"} to book more.`; render(); return; }
+    if (/too_many_bookings/i.test(error.message)) { st.error = "Lots of people are booking right now. Please try again in a few minutes."; render(); return; }
+    if (/invalid_booking: (email|phone|name)/i.test(error.message)) { st.error = "Please check your name, email and phone number, then try again."; go("details"); return; }
     st.error = `The booking didn't go through. Try again, or call us on ${D.settings.phone || "the shop"}.`; render(); return;
   }
   const emailed = await notify(row.id, "created");

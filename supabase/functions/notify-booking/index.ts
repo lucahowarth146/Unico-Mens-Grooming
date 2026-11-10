@@ -42,17 +42,30 @@ function prettyDate(d: string) {
   return `${DAYS[new Date(Date.UTC(y, m - 1, day)).getUTCDay()]} ${day} ${MONTHS[m - 1]} ${y}`;
 }
 
+// A plain-text copy of the email. Emails with only HTML are more likely to be marked as spam.
+function toText(html: string) {
+  return html
+    .replace(/<\/(p|h1|div|tr)>/gi, "\n").replace(/<br\s*\/?>/gi, "\n").replace(/<\/td>\s*<td[^>]*>/gi, ": ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .split("\n").map(l => l.trim()).filter(Boolean).join("\n");
+}
+
 async function send(to: string | string[], subject: string, html: string, replyTo?: string, shopName = SHOP_NAME_FALLBACK) {
   const list = [...new Set((Array.isArray(to) ? to : [to]).filter(Boolean))];
   if (!list.length) return;
+  const text = toText(html);
   if (gmail) {
-    await gmail.sendMail({ from: `"${shopName.replace(/"/g, "")}" <${GMAIL_USER}>`, to: list.join(", "), subject, html, replyTo: replyTo || undefined });
+    // One email per recipient, so customers never see each other's addresses.
+    for (const to of list) {
+      await gmail.sendMail({ from: { name: shopName.replace(/"/g, ""), address: GMAIL_USER! }, to, subject, html, text, replyTo: replyTo || undefined });
+    }
     return;
   }
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: Deno.env.get("EMAIL_FROM") ?? `${shopName} <onboarding@resend.dev>`, to: list, subject, html, reply_to: replyTo || undefined }),
+    body: JSON.stringify({ from: Deno.env.get("EMAIL_FROM") ?? `${shopName} <onboarding@resend.dev>`, to: list, subject, html, text, reply_to: replyTo || undefined }),
   });
   if (!r.ok) throw new Error(`Email to ${list.join(", ")} failed: ${r.status} ${await r.text()}`);
 }
@@ -87,6 +100,9 @@ Deno.serve(async req => {
     // Anyone can trigger this, so only for brand-new bookings.
     const age = Date.now() - new Date(b.created_at).getTime();
     if (b.status !== "pending" || age > 15 * 60 * 1000) return json({ error: "Too late to send booking emails for this booking" }, 409);
+    // Only the first call for a booking sends anything, so the emails can't be repeated.
+    const { data: first } = await db.rpc("claim_booking_email", { p_id: b.id });
+    if (!first) return json({ ok: true, skipped: "Emails for this booking were already sent" });
   } else {
     // Accept / decline emails: only the owner, or the booking's own barber.
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -112,28 +128,29 @@ Deno.serve(async req => {
   const custRows: [string, string][] = [["Name", b.customer_name], ["Phone", b.customer_phone], ["Email", b.customer_email], ...(b.notes ? [["Notes", b.notes] as [string, string]] : [])];
   const errors: string[] = [];
   const attempt = (p: Promise<void>) => p.catch(e => errors.push(String(e.message ?? e)));
+  const shopName = s.name || SHOP_NAME_FALLBACK;
 
   if (event === "created") {
     await Promise.all([
       attempt(send(b.customer_email, `Booking request received: ${prettyDate(b.booking_date)}`,
         layout(s, "We've got your booking request", `Thanks ${esc(b.customer_name)}. Your barber will confirm it shortly and we'll email you again.`, rows,
-          `Need to change it? Call us on ${esc(s.phone ?? "")}.`), s.shop_email)),
+          `Need to change it? Call us on ${esc(s.phone ?? "")}.`), s.shop_email, shopName)),
       attempt(send([...barberEmails, s.shop_email].filter(Boolean), `New booking request: ${b.customer_name}, ${when}`,
-        layout(s, "New booking request", "Accept or decline it in the staff or owner area.", [...rows, ...custRows]), b.customer_email)),
+        layout(s, "New booking request", "Accept or decline it in the staff or owner area.", [...rows, ...custRows]), b.customer_email, shopName)),
     ]);
   } else if (event === "confirmed") {
     await Promise.all([
       attempt(send(b.customer_email, `Booking confirmed: ${prettyDate(b.booking_date)}`,
         layout(s, "You're booked in", `Good news ${esc(b.customer_name)}, your booking is confirmed. See you then.`, rows,
-          `Can't make it? Please call us on ${esc(s.phone ?? "")} so we can offer the slot to someone else.`), s.shop_email)),
-      attempt(send(barberEmails, `Accepted: ${b.customer_name}, ${when}`, layout(s, "Booking accepted", "This booking is confirmed.", [...rows, ...custRows]))),
+          `Can't make it? Please call us on ${esc(s.phone ?? "")} so we can offer the slot to someone else.`), s.shop_email, shopName)),
+      attempt(send(barberEmails, `Accepted: ${b.customer_name}, ${when}`, layout(s, "Booking accepted", "This booking is confirmed.", [...rows, ...custRows]), undefined, shopName)),
     ]);
   } else {
     await Promise.all([
       attempt(send(b.customer_email, `We couldn't confirm your booking for ${prettyDate(b.booking_date)}`,
         layout(s, "Sorry, we can't make this one", `Hi ${esc(b.customer_name)}, unfortunately we can't fit in this booking.`, rows,
-          `Please book another time on our website or call us on ${esc(s.phone ?? "")}.`), s.shop_email)),
-      attempt(send(barberEmails, `Declined: ${b.customer_name}, ${when}`, layout(s, "Booking declined", "The customer has been told.", [...rows, ...custRows]))),
+          `Please book another time on our website or call us on ${esc(s.phone ?? "")}.`), s.shop_email, shopName)),
+      attempt(send(barberEmails, `Declined: ${b.customer_name}, ${when}`, layout(s, "Booking declined", "The customer has been told.", [...rows, ...custRows]), undefined, shopName)),
     ]);
   }
 

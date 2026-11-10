@@ -8,13 +8,38 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 
+# Owner and staff pages: strict rules on what they can load, never shown inside another site, never cached.
 [[headers]]
   for = "/admin.html"
   [headers.values]
     X-Robots-Tag = "noindex"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://okddgqogvjnobbfizrcv.supabase.co https://images.pexels.com https://lh3.googleusercontent.com; connect-src 'self' https://okddgqogvjnobbfizrcv.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    X-Frame-Options = "DENY"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/admin"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://okddgqogvjnobbfizrcv.supabase.co https://images.pexels.com https://lh3.googleusercontent.com; connect-src 'self' https://okddgqogvjnobbfizrcv.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    X-Frame-Options = "DENY"
+    Cache-Control = "no-store"
 
 [[headers]]
   for = "/staff.html"
   [headers.values]
     X-Robots-Tag = "noindex"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://okddgqogvjnobbfizrcv.supabase.co https://images.pexels.com https://lh3.googleusercontent.com; connect-src 'self' https://okddgqogvjnobbfizrcv.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    X-Frame-Options = "DENY"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/staff"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://okddgqogvjnobbfizrcv.supabase.co https://images.pexels.com https://lh3.googleusercontent.com; connect-src 'self' https://okddgqogvjnobbfizrcv.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    X-Frame-Options = "DENY"
+    Cache-Control = "no-store"
