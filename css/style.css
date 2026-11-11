@@ -132,6 +132,9 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
 footer a{color:var(--paper)}
 .made{display:inline-flex;align-items:center;gap:8px}
 .made svg{width:16px;height:16px;color:var(--brass)}
+footer .credit-wrap{margin-top:18px;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--line) 60%,transparent);justify-content:center}
+.credit{margin:0;text-align:center;font-size:12px;letter-spacing:.06em;color:var(--muted);opacity:.8}
+.credit sup{font-size:.65em;margin-left:1px}
 
 /* booking sheet */
 .sheet{position:fixed;inset:0;z-index:70;display:grid;grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr);justify-items:end;background:rgba(5,5,4,.6)}
