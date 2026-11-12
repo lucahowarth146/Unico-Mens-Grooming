@@ -2,16 +2,8 @@ import { sb, $, el, toast, gbp, sharp, sharpAttrs, shopNow, addDays, dayOfWeek, 
   fetchBusy, freeBarbers, availableTimes, loadPublic, notify, uuid } from "./lib.js";
 import { BOOKING_DAYS_AHEAD } from "./config.js";
 
-const REVIEWS = [
-  ["Tom W.", "Best barbers in Sale, hands down. Cam's attention to detail is incredible. I won't go anywhere else."],
-  ["Daniel K.", "Walked in for a skin fade and walked out feeling like a million quid. Clean shop, great music, top blokes."],
-  ["Alex M.", "Booked the Groom Package for my wedding. Hot towel shave was spot on. Highly recommend Unico."],
-  ["Chris B.", "Took my son for his first proper haircut. Patient, friendly, and the result was perfect. Thank you!"],
-  ["Sam R.", "I've tried every barbers in the area. Unico is the only one that gets my fade right every single time."],
-  ["Jordan L.", "Beard conditioning is a game changer. My beard has never felt softer. Great atmosphere too."],
-];
-
-let D = { settings: {}, services: [], barbers: [], photos: [] };
+let D = { settings: {}, services: [], barbers: [], photos: [], reviews: [] };
+const googleReviewsUrl = () => D.settings.google_reviews_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((D.settings.name || "Unico Men's Grooming") + " " + (D.settings.address || "Sale"))}`;
 $("#yr").textContent = new Date().getFullYear();
 
 /* ---------- render the public page ---------- */
@@ -43,8 +35,12 @@ function renderPage() {
     onclick: () => openLb(p.url, p.caption), onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openLb(p.url, p.caption); } } },
     el("img", { ...sharpAttrs(p.url, 600), sizes: "(max-width: 640px) 100vw, 560px", alt: p.caption || "Photo from the shop", loading: "lazy", onerror: e => e.target.closest("figure")?.remove() }), p.caption ? el("figcaption", {}, p.caption) : null)));
 
-  $("#revs").replaceChildren(...REVIEWS.map(([n, t]) => el("figure", { class: "rev", style: "margin:0" },
-    el("span", { class: "stars", "aria-label": "5 out of 5" }, "★★★★★"), el("q", {}, t), el("figcaption", { class: "who" }, n))));
+  const stars = n => "★".repeat(n) + "☆".repeat(5 - n);
+  $("#revs").replaceChildren(...D.reviews.map(r => el("figure", { class: "rev", style: "margin:0" },
+    el("span", { class: "stars", "aria-label": `${r.rating} out of 5 stars` }, stars(r.rating)), el("q", {}, r.text),
+    el("figcaption", { class: "who" }, r.author, el("span", { class: "rev-src" }, " · Google review")))));
+  $("#revLink").replaceChildren(el("a", { class: "btn ghost", href: googleReviewsUrl(), target: "_blank", rel: "noopener" },
+    D.reviews.length ? `Read all ${s.review_count || ""} reviews on Google`.replace("  ", " ") : `See our ${s.review_count || ""} reviews on Google`.replace("  ", " ")));
 
   // contact + map
   const addr = s.address || "";
@@ -184,6 +180,7 @@ function render() {
       ...[["Service", s.name], ["Barber", bn], ["When", `${prettyDate(st.date)} at ${fmtTime(st.time)} (UK time)`], ["Length", s.duration + " min"], ["Name", st.name], ["Email", st.email], ["Phone", st.phone], st.notes && ["Notes", st.notes], ["Price", gbp(s.price) + ", pay in the shop"]]
         .filter(Boolean).map(([k, v]) => el("div", {}, el("span", {}, k), el("span", {}, v)))));
     b.append(el("p", { class: "note" }, "Your booking goes to the shop to accept. We'll email you when it's accepted."));
+    b.append(el("p", { class: "note" }, "We use your details only to manage this booking. See our ", el("a", { href: "privacy.html", target: "_blank", rel: "noopener" }, "privacy notice"), "."));
     if (st.error) b.append(el("p", { class: "err" }, st.error));
     f.append(sum, el("div", { class: "btns" }, back("details"), next(st.saving ? "Booking…" : "Confirm booking", !st.saving, confirm)));
   }
@@ -231,6 +228,8 @@ async function confirm() {
 /* ---------- start ---------- */
 (async () => {
   D = await loadPublic();
+  const rv = await sb.from("reviews").select("*").eq("active", true).order("sort_order");
+  D.reviews = rv.error ? [] : rv.data || [];
   if (D.error) toast("Some details didn't load. Refresh the page to try again.", "err");
   renderPage();
 })();

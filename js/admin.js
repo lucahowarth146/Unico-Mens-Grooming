@@ -3,7 +3,7 @@ import { sb, $, el, toast, gbp, sharp, shopNow, addDays, dayOfWeek, prettyDate, 
 
 const MODE = document.body.dataset.mode; // "owner" or "staff"
 const app = $("#app");
-const S = { me: null, view: "bookings", bookings: [], services: [], barbers: [], photos: [], settings: {}, admins: [],
+const S = { me: null, view: "bookings", bookings: [], services: [], barbers: [], photos: [], reviews: [], settings: {}, admins: [],
   filter: { status: "active", barber: "all", when: "upcoming" }, cal: { month: shopNow().date.slice(0, 7), barber: "all", day: null } };
 
 /* ======================= sign in ======================= */
@@ -68,6 +68,7 @@ async function loadAll() {
   if (MODE === "owner") jobs.push(
     sb.from("services").select("*").order("sort_order").then(r => (S.services = r.data || [])),
     sb.from("photos").select("*").order("sort_order").then(r => (S.photos = r.data || [])),
+    sb.from("reviews").select("*").order("sort_order").then(r => (S.reviews = r.data || [], S.reviewsMissing = !!r.error)),
     sb.from("shop_settings").select("*").eq("id", 1).maybeSingle().then(r => (S.settings = r.data || {})),
     loadAdmins());
   await Promise.all(jobs);
@@ -75,7 +76,7 @@ async function loadAll() {
 async function loadAdmins() { const r = await sb.from("admin_users").select("*, barber:barbers(*)").order("created_at"); S.admins = r.data || []; }
 
 /* ======================= shell ======================= */
-const VIEWS_OWNER = [["bookings", "Bookings"], ["calendar", "Calendar"], ["services", "Services"], ["barbers", "Barbers"], ["photos", "Photos"], ["details", "Shop details"], ["access", "Passwords & staff"]];
+const VIEWS_OWNER = [["bookings", "Bookings"], ["calendar", "Calendar"], ["services", "Services"], ["barbers", "Barbers"], ["photos", "Photos"], ["reviews", "Reviews"], ["details", "Shop details"], ["access", "Passwords & staff"]];
 const VIEWS_STAFF = [["bookings", "My bookings"], ["calendar", "My calendar"], ["access", "My password"]];
 function shell() {
   const views = MODE === "owner" ? VIEWS_OWNER : VIEWS_STAFF;
@@ -88,7 +89,7 @@ function shell() {
       el("div", { class: "who" }, el("span", {}, MODE === "owner" ? "Owner" : S.me.barber?.name || "Staff", el("br"), el("span", { style: "font-size:12px" }, S.me.email)),
         el("button", { class: "link", onclick: async () => { await sb.auth.signOut(); loginScreen(); } }, "Sign out"))),
     el("main", { class: "main", id: "main" })));
-  ({ bookings: viewBookings, calendar: viewCalendar, services: viewServices, barbers: viewBarbers, photos: viewPhotos, details: viewDetails, access: viewAccess })[S.view]();
+  ({ bookings: viewBookings, calendar: viewCalendar, services: viewServices, barbers: viewBarbers, photos: viewPhotos, reviews: viewReviews, details: viewDetails, access: viewAccess })[S.view]();
 }
 const main = (...kids) => $("#main").replaceChildren(...kids.filter(k => k != null && k !== false));
 const head = (t, sub) => el("div", {}, el("h1", {}, t), sub ? el("p", { class: "sub" }, sub) : null);
@@ -354,6 +355,38 @@ function viewPhotos() {
     el("p", { class: "muted", style: "font-size:13px" }, "The hero photo at the top of the website and the barbers' photos are changed under Shop details and Barbers."));
 }
 
+/* ======================= reviews ======================= */
+function viewReviews() {
+  if (S.reviewsMissing) return main(head("Reviews", "Show real Google reviews on your website."),
+    el("p", { class: "note" }, "Reviews aren't switched on yet. Run the reviews-and-privacy.sql file in Supabase's SQL Editor, then reload this page."));
+  const list = el("div", { style: "display:grid;gap:10px" });
+  const row = r => {
+    const v = { ...r }, msg = el("span", { class: "muted", style: "font-size:13px" });
+    return el("div", { class: "erow" },
+      el("div", { class: "grid3" },
+        field("Customer's name (as shown on Google)", el("input", { id: nid(), value: v.author || "", oninput: e => (v.author = e.target.value) })),
+        field("Stars", el("select", { id: nid(), onchange: e => (v.rating = Number(e.target.value)) }, ...[5, 4, 3, 2, 1].map(n => el("option", { value: n, selected: (v.rating || 5) === n }, "★".repeat(n))))),
+        el("label", { class: "check" }, el("input", { type: "checkbox", checked: v.active !== false, onchange: e => (v.active = e.target.checked) }), "Shown on site")),
+      field("Review text (copied exactly from Google)", el("textarea", { id: nid(), rows: "3", oninput: e => (v.text = e.target.value) }, v.text || "")),
+      el("div", { class: "toolbar" }, msg, el("div", { class: "actions" },
+        el("button", { class: "btn sm", onclick: async () => {
+          if (!v.author?.trim() || !v.text?.trim()) { msg.textContent = "Add the customer's name and their review."; return; }
+          const data = { author: v.author.trim(), rating: v.rating || 5, text: v.text.trim(), active: v.active !== false, sort_order: v.sort_order ?? S.reviews.length };
+          const res = v.id ? await sb.from("reviews").update(data).eq("id", v.id).select().single() : await sb.from("reviews").insert(data).select().single();
+          if (res.error) { msg.textContent = "Couldn't save: " + res.error.message; return; }
+          S.reviews = v.id ? S.reviews.map(x => (x.id === v.id ? res.data : x)) : [...S.reviews, res.data]; toast("Review saved"); viewReviews();
+        } }, "Save"),
+        r.id ? el("button", { class: "btn sm danger", onclick: e => e.target.parentElement.replaceChildren(el("span", { class: "inline-confirm" }, "Delete this review?",
+          el("button", { class: "btn sm danger", onclick: async () => { const { error } = await sb.from("reviews").delete().eq("id", r.id); if (error) return toast("Couldn't delete: " + error.message, "err"); S.reviews = S.reviews.filter(x => x.id !== r.id); toast("Review deleted"); viewReviews(); } }, "Delete"),
+          el("button", { class: "btn sm ghost", onclick: viewReviews }, "Keep"))) }, "Delete") : el("button", { class: "btn sm ghost", onclick: viewReviews }, "Cancel"))));
+  };
+  S.reviews.forEach(r => list.append(row(r)));
+  main(head("Reviews", "Copy your favourite Google reviews here, word for word, with the customer's name and stars. Only use real reviews."),
+    el("div", {}, el("button", { class: "btn", onclick: () => { list.prepend(row({ rating: 5, active: true })); list.querySelector("input")?.focus(); } }, "Add a review")),
+    S.reviews.length ? list : el("p", { class: "empty" }, "No reviews yet. Until you add some, the website shows a button linking to your Google reviews."),
+    el("p", { class: "muted", style: "font-size:13px" }, "The link to your Google reviews is set under Shop details."));
+}
+
 /* ======================= shop details ======================= */
 function viewDetails() {
   const v = { ...S.settings }; const msg = el("p", { class: "muted" });
@@ -377,7 +410,8 @@ function viewDetails() {
     el("div", { class: "card" }, el("h2", {}, "Contact"),
       el("div", { class: "grid2" }, inp("address", "Address"), inp("phone", "Phone", "tel")),
       inp("shop_email", "Shop email (gets a copy of every booking)", "email"),
-      el("div", { class: "grid3" }, inp("instagram", "Instagram link", "url"), inp("facebook", "Facebook link", "url"), inp("tiktok", "TikTok link", "url"))),
+      el("div", { class: "grid3" }, inp("instagram", "Instagram link", "url"), inp("facebook", "Facebook link", "url"), inp("tiktok", "TikTok link", "url")),
+      inp("google_reviews_url", "Link to your Google reviews (from Google Maps: Share → Copy link)", "url")),
     el("div", { class: "card" }, el("h2", {}, "Opening hours (UK time)"), el("p", { class: "muted", style: "font-size:14px" }, "Online booking only offers times inside these hours."), hours,
       inp("opening_hours", "Short summary shown at the top of the site", "text", { placeholder: "Open Monday–Saturday · Closes 6:30 pm" })),
     el("div", { class: "card" }, el("h2", {}, "Google rating"), el("div", { class: "grid2" }, inp("rating", "Rating", "number", { step: "0.1", min: "0", max: "5" }), inp("review_count", "Number of reviews", "number", { min: "0" }))),

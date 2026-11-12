@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy notice | Unico Men's Grooming</title>
+<meta name="description" content="How Unico Men's Grooming uses your details when you book online.">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .doc{max-width:720px;margin:0 auto;padding-block:48px 72px;display:grid;gap:22px}
+  .doc h1{font-family:var(--f-serif);font-size:clamp(32px,5vw,44px)}
+  .doc h2{font-family:var(--f-serif);font-size:22px;margin-top:10px}
+  .doc p,.doc li{color:#cfc7bd;line-height:1.7}
+  .doc ul{margin:0;padding-left:20px;display:grid;gap:6px}
+  .doc .updated{color:var(--muted);font-size:14px}
+  .doc a{color:var(--brass)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Home"><img src="img/logo.png" alt=""><span>UNICO</span></a>
+    <a class="btn" href="index.html">Back to website</a>
+  </div>
+</header>
+
+<main class="wrap doc">
+  <span class="eyebrow">Your data</span>
+  <h1>Privacy notice</h1>
+  <p class="updated">Last updated 12 November 2026</p>
+
+  <p>This notice explains what <span data-shop="name">Unico Men's Grooming</span> does with your details when you book online. We keep it simple: we only use your details to manage your booking.</p>
+
+  <h2>Who we are</h2>
+  <p><span data-shop="name">Unico Men's Grooming</span>, <span data-shop="address">172 Washway Rd, Sale M33 6RH</span>, is responsible for your data. Contact us on <span data-shop="phone">0161 385 8362</span> or in the shop.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li>Your name, phone number and email address</li>
+    <li>Your booking: the service, barber, date and time</li>
+    <li>Any notes you add for your barber</li>
+  </ul>
+
+  <h2>Why we use it</h2>
+  <p>To take and manage your booking: so your barber knows you're coming, so we can email you to confirm, accept or decline it, and so we can contact you if something changes. The legal basis is that you've asked us to book an appointment for you. We never sell your details or use them for marketing.</p>
+
+  <h2>Who can see it</h2>
+  <ul>
+    <li>The shop owner, and the barber your booking is with</li>
+    <li>The companies that run the booking system for us: Supabase (stores bookings, on servers in London), Netlify (hosts the website) and Google (sends booking emails through Gmail)</li>
+  </ul>
+  <p>These companies only handle your data to provide their service to us.</p>
+
+  <h2>How long we keep it</h2>
+  <p>Bookings are deleted automatically 12 months after the appointment date. If you'd like yours deleted sooner, just ask.</p>
+
+  <h2>Cookies</h2>
+  <p>We don't use tracking or advertising cookies. The map on our website is provided by Google Maps and the fonts by Google Fonts, so Google receives basic technical information (such as your IP address) when those load. Staff sign-ins store a login token in the staff member's own browser.</p>
+
+  <h2>Your rights</h2>
+  <p>You can ask us for a copy of your data, to correct it, or to delete it. Contact us using the details above. If you're unhappy with how we've handled your data, you can complain to the Information Commissioner's Office at <a href="https://ico.org.uk/make-a-complaint/" target="_blank" rel="noopener">ico.org.uk</a> or on 0303 123 1113.</p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="yr"></span> <span data-shop="name">Unico Men's Grooming</span></span>
+    <span class="made"><a href="index.html">Back to website</a></span>
+  </div>
+</footer>
+
+<script type="module">
+  // Fill in the shop's current contact details from the database.
+  import { loadPublic } from "./js/lib.js";
+  document.getElementById("yr").textContent = new Date().getFullYear();
+  const { settings: s } = await loadPublic();
+  document.querySelectorAll("[data-shop]").forEach(el => {
+    const v = s?.[el.dataset.shop];
+    if (!v) return;
+    el.textContent = v;
+  });
+</script>
+</body>
+</html>

@@ -317,3 +317,5 @@ table.bk tr.daterow td{background:var(--ink-3);font-family:var(--f-display);lett
 /* Netlify's "Powered by Netlify" badge sits in the bottom-right corner and covers
    the booking panel's buttons, so hide it while booking and on the admin pages. */
 body.modal-open #nl-badge-frame, body[data-mode] #nl-badge-frame { display: none !important; }
+
+.rev-src{color:var(--muted);text-transform:none;letter-spacing:0;font-family:var(--f-body)}
